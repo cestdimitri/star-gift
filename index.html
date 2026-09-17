@@ -65,11 +65,13 @@
     padding: 0;
     overflow:hidden;
     background: radial-gradient(120% 80% at 50% 100%, #1b1a33 0%, #0a0a16 55%, #05050c 100%);
-    /* небо уменьшено, чтобы прогноз и сад помещались на том же экране */
+    /* небо уменьшено, чтобы прогноз и сад помещались на том же экране,
+       но не ниже разумного минимума в пикселях — иначе на очень низких
+       окнах плашкам и подписи негде поместиться без наезда на панель часа */
     min-height: 60vh;
-    min-height: 60dvh;
+    min-height: max(60dvh, 380px);
     height: 60vh;
-    height: 60dvh;
+    height: max(60dvh, 380px);
   }
   #sky-canvas{
     position:absolute;
@@ -82,10 +84,10 @@
   .sky-fade-top{
     position:absolute;
     inset: 0 0 auto 0;
-    height: 132px;
-    background: linear-gradient(to bottom, rgba(5,5,12,.6), rgba(5,5,12,0));
-    backdrop-filter: blur(3px);
-    -webkit-backdrop-filter: blur(3px);
+    height: 96px;
+    background: linear-gradient(to bottom, rgba(5,5,12,.46), rgba(5,5,12,0));
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
     pointer-events:none;
     z-index:3;
   }
@@ -157,7 +159,7 @@
   .compass-e{ left: 12px; }
   .compass-w{ right: 12px; }
   .sky-caption{
-    width: min(90%, 480px);
+    width: min(94%, 640px);
     text-align:center;
     font-family: var(--font-sans);
     font-size: 12px;
@@ -284,7 +286,7 @@
 
   .forecast-section{
     align-items:stretch;
-    text-align:left;
+    text-align:center;
     /* Секция по высоте содержимого, а не во весь экран. Оформлена как
        полупрозрачное стеклянное окно поверх сада — он виден и сквозь
        блюр внутри карточки, и в зазорах вокруг неё. */
@@ -319,7 +321,8 @@
     }
     #forecast-body .forecast-theme:nth-of-type(-n+2){ border-top:none; }
     #forecast-body .forecast-dowords,
-    #forecast-body .forecast-small{ grid-column: 1 / -1; }
+    #forecast-body .forecast-small,
+    #forecast-body .forecast-quote{ grid-column: 1 / -1; }
   }
   .forecast-date{
     text-align:center;
@@ -366,9 +369,7 @@
   .forecast-dowords{
     display:flex;
     gap: 28px;
-    margin-top: 14px;
-    padding-top: 14px;
-    border-top: 1px solid rgba(233,228,216,.1);
+    margin-top: 16px;
   }
   .forecast-dowords > div{ flex:1; min-width:0; }
   /* в две колонки по 150px русские фразы рвутся на три строки и сливаются
@@ -428,6 +429,8 @@
   .forecast-quote .forecast-source a:hover{ color: var(--ink-dim); }
   .forecast-small{
     margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(233,228,216,.1);
     font-size: 13px;
     color: var(--ink-faint);
     line-height:1.7;
@@ -435,6 +438,7 @@
   }
   .forecast-actions{
     display:flex;
+    justify-content:center;
     gap: 12px;
     margin-top: 18px;
     flex-wrap: wrap;
@@ -604,13 +608,6 @@
   @media (prefers-reduced-motion: reduce){
     *{ animation-duration:.001ms !important; }
   }
-
-  /* На совсем невысоких экранах строке с координатами и году рождения
-     уже не хватает места над панелью часа — прячем её, самое важное
-     (дата, компас, управление) остаётся. */
-  @media (max-height: 560px){
-    .sky-caption{ display:none; }
-  }
 </style>
 </head>
 <body>
@@ -634,11 +631,11 @@
     <div class="sky-overlay">
       <div class="sky-overlay-top">
         <div class="site-logo">Твой небосвод</div>
+        <div class="sky-caption" id="sky-caption">18 сентября 1971 года, село Кленовское, 56°49′ с.ш. 58°37′ в.д. Луны в ту ночь не было.</div>
         <div class="plaque compass-n">Север</div>
       </div>
       <div class="sky-overlay-bottom">
         <div class="plaque compass-s">Юг</div>
-        <div class="sky-caption" id="sky-caption">18 сентября 1971 года, село Кленовское, 56°49′ с.ш. 58°37′ в.д. Луны в ту ночь не было.</div>
       </div>
     </div>
 
@@ -1335,11 +1332,11 @@ safeInit('forecast', function(){
     themeBlocksData.forEach(({ theme, text }) => {
       html += `<div class="forecast-theme"><h3 class="forecast-theme-name">${theme}</h3><p class="forecast-theme-text">${text}</p></div>`;
     });
-    html += `<div class="forecast-dowords">
-      <div><h3>Делать</h3><ul>${doWordsToday.map(w => `<li>${w}</li>`).join('')}</ul></div>
-      <div><h3>Избегать</h3><ul>${avoidWordsToday.map(w => `<li>${w}</li>`).join('')}</ul></div>
-    </div>
-    <p class="forecast-small">${smallPrintLine()}</p>`;
+    html += `<p class="forecast-small">${smallPrintLine()}</p>
+    <div class="forecast-dowords">
+      <div><h3>Стоит попробовать</h3><ul>${doWordsToday.map(w => `<li>${w}</li>`).join('')}</ul></div>
+      <div><h3>Сегодня не нужно</h3><ul>${avoidWordsToday.map(w => `<li>${w}</li>`).join('')}</ul></div>
+    </div>`;
     bodyEl.innerHTML = html;
   }
 
@@ -1506,8 +1503,8 @@ safeInit('forecast', function(){
           }
           return yy;
         };
-        const yDo = draw(blk.doLines, 'ДЕЛАТЬ', marginX);
-        const yAv = draw(blk.avLines, 'ИЗБЕГАТЬ', marginX + colW + colGap);
+        const yDo = draw(blk.doLines, 'СТОИТ ПОПРОБОВАТЬ', marginX);
+        const yAv = draw(blk.avLines, 'СЕГОДНЯ НЕ НУЖНО', marginX + colW + colGap);
         y = Math.max(yDo, yAv);
       }
     }
