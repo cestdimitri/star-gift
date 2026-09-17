@@ -665,6 +665,13 @@
 
 <canvas id="garden-canvas" aria-hidden="true"></canvas>
 
+<!-- Слепок прогноза на случай, когда страницу открыли файлом с диска:
+     тогда браузер не даёт прочитать соседний forecast.json (file:// + CORS).
+     Обновляется роботом: tools/build-forecast.mjs. Не редактировать руками. -->
+<script type="application/json" id="forecast-embedded">
+{"sign":"virgo","source":"ignio.com","updated":"2026-09-17T11:33:30.961Z","days":{"2026-09-17":"Вы можете найти союзника в самом невероятном месте. Будьте максимально открыты для общения, и возможность превратится в реально совершившийся факт.","2026-09-18":"У вас сегодня не будет ни малейшей причины для скуки или любого другого вида плохого настроения. Не то, чтобы все было так чудесно, просто некогда будет.","2026-09-19":"Если ваш дом не карточный, то сегодняшний ветер перемен ни ему, ни его обитателям не повредит. Помните, что порядок - это всего-навсего упорядоченный хаос."}}
+</script>
+
 <button id="sound-toggle" class="sound-toggle" type="button" aria-pressed="false" hidden>
   <span class="sound-icon" aria-hidden="true">♪</span>
   <span class="sound-text">звук</span>
@@ -1342,22 +1349,66 @@ safeInit('forecast', function(){
   }
 
   // Текст кладёт рядом со страницей робот раз в сутки (tools/build-forecast.mjs).
-  // Прямо из браузера гороскопные сервисы не читаются: они не отдают
-  // CORS-заголовков. Нет файла, нет сети, робот не отработал — блока просто нет.
+  // Прямо из браузера гороскопные сервисы не читаются: они не отдают CORS-заголовков.
+  //
+  // Читаем из двух мест, в таком порядке:
+  //   1. forecast.json рядом со страницей — всегда свежий, работает по http(s);
+  //   2. слепок, вшитый прямо в страницу (<script id="forecast-embedded">).
+  // Второе нужно, потому что при открытии файла с диска (file://) браузер
+  // запрещает fetch к соседнему файлу — и блок молча пропадал. Со слепком
+  // он есть всегда: и на сайте, и у файла, скачанного на компьютер.
+  function quoteDaysFromEmbed(){
+    const el = document.getElementById('forecast-embedded');
+    if (!el) return null;
+    try {
+      const data = JSON.parse(el.textContent);
+      return data && data.days ? data.days : null;
+    } catch (e){ return null; }
+  }
+
+  // Берём текст на сегодня; если его нет (слепок успел устареть) —
+  // самый свежий из доступных, но тогда честно пишем в заголовке его дату.
+  function pickQuote(days){
+    if (!days) return null;
+    const today = todayKey();
+    const good = t => typeof t === 'string' && t.trim().length >= 10;
+    if (good(days[today])) return { text: days[today].trim(), date: today, isToday: true };
+    const past = Object.keys(days).filter(d => d <= today && good(days[d])).sort();
+    if (!past.length) return null;
+    const last = past[past.length - 1];
+    return { text: days[last].trim(), date: last, isToday: false };
+  }
+
+  function renderQuote(days){
+    if (bodyEl.querySelector('.forecast-quote')) return true;   // уже показан
+    const q = pickQuote(days);
+    if (!q) return false;
+    const head = q.isToday
+      ? 'Гороскоп на сегодня'
+      : `Гороскоп за ${formatDate(new Date(q.date + 'T12:00:00'))}`;
+    const box = document.createElement('div');
+    box.className = 'forecast-quote';
+    box.innerHTML = `<h3>${escapeHtml(head)}</h3>
+      <p>${escapeHtml(q.text)}</p>
+      <p class="forecast-source"><a href="https://ignio.com/" target="_blank" rel="noopener">ignio.com</a></p>`;
+    bodyEl.appendChild(box);
+    return true;
+  }
+
   function loadQuote(){
+    // сначала — то, что уже в странице: блок появляется сразу, без ожидания сети
+    renderQuote(quoteDaysFromEmbed());
     if (typeof fetch !== 'function') return;
     fetch('forecast.json', { cache: 'no-cache' })
       .then(r => (r.ok ? r.json() : null))
       .then(data => {
         if (!data || !data.days) return;
-        const text = data.days[todayKey()];
-        if (typeof text !== 'string' || text.trim().length < 10) return;
-        const box = document.createElement('div');
-        box.className = 'forecast-quote';
-        box.innerHTML = `<h3>Гороскоп на сегодня</h3>
-          <p>${escapeHtml(text.trim())}</p>
-          <p class="forecast-source"><a href="https://ignio.com/" target="_blank" rel="noopener">ignio.com</a></p>`;
-        bodyEl.appendChild(box);
+        const fresh = pickQuote(data.days);
+        if (!fresh) return;
+        // свежий файл побеждает слепок — заменяем то, что показали из страницы
+        const old = bodyEl.querySelector('.forecast-quote');
+        if (old) old.remove();
+        renderQuote(data.days);
       })
       .catch(() => {});
   }

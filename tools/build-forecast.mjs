@@ -10,6 +10,7 @@ const SOURCE = 'https://ignio.com/r/export/utf/xml/daily/com.xml';
 const SIGN = process.env.FORECAST_SIGN || 'virgo';   // Солнце Тани — в Деве
 const OUT = process.env.FORECAST_OUT || 'forecast.json';
 const KEEP_DAYS = 150;                                // скользящее окно, чтобы файл не рос вечно
+const EMBED_DAYS = 10;                                // столько последних дней вшиваем в index.html
 
 function parseIgnio(xml, sign) {
   const dates = {};
@@ -69,6 +70,35 @@ async function main() {
 
   await writeFile(OUT, JSON.stringify(store, null, 1) + '\n', 'utf8');
   console.log(`\nготово: обновлено ${added}, всего дней в файле ${Object.keys(store.days).length}`);
+
+  await embedIntoPage(store);
+}
+
+// Кладёт слепок последних дней прямо в index.html.
+// Зачем: если страницу открыть файлом с диска (file://), браузер запрещает
+// читать соседний forecast.json — и блок с гороскопом пропадает. Слепок
+// внутри страницы работает всегда; на сайте его всё равно перебивает
+// свежий forecast.json, который страница дочитывает по сети.
+async function embedIntoPage(store) {
+  const PAGE = process.env.FORECAST_PAGE || 'index.html';
+  if (!existsSync(PAGE)) { console.log(`${PAGE} рядом нет — слепок не обновляю`); return; }
+
+  const re = /(<script type="application\/json" id="forecast-embedded">\n)[\s\S]*?(\n<\/script>)/;
+  const html = await readFile(PAGE, 'utf8');
+  if (!re.test(html)) { console.log(`в ${PAGE} нет блока forecast-embedded — слепок не обновляю`); return; }
+
+  // в слепок берём только ближайшие дни: страницу незачем раздувать всем архивом
+  const keys = Object.keys(store.days).sort().slice(-EMBED_DAYS);
+  const slim = { sign: store.sign, source: store.source, updated: store.updated, days: {} };
+  for (const k of keys) slim.days[k] = store.days[k];
+
+  // "</script>" внутри строки закрыл бы тег раньше времени — экранируем
+  const json = JSON.stringify(slim).replace(/<\//g, '<\\/');
+  const next = html.replace(re, `$1${json}$2`);
+  if (next === html) { console.log('слепок в странице уже актуален'); return; }
+
+  await writeFile(PAGE, next, 'utf8');
+  console.log(`слепок в ${PAGE} обновлён: ${keys.length} дн. (${keys[0]} — ${keys[keys.length - 1]})`);
 }
 
 main().catch((e) => { console.error('ошибка:', e.message); process.exit(1); });
