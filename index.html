@@ -65,13 +65,11 @@
     padding: 0;
     overflow:hidden;
     background: radial-gradient(120% 80% at 50% 100%, #1b1a33 0%, #0a0a16 55%, #05050c 100%);
-    /* небо уменьшено, чтобы прогноз и сад помещались на том же экране,
-       но не ниже разумного минимума в пикселях — иначе на очень низких
-       окнах плашкам и подписи негде поместиться без наезда на панель часа */
-    min-height: 60vh;
-    min-height: max(60dvh, 380px);
-    height: 60vh;
-    height: max(60dvh, 380px);
+    /* небо в полный масштаб — во весь экран, как остальные секции */
+    min-height: 100vh;
+    min-height: 100dvh;
+    height: 100vh;
+    height: 100dvh;
   }
   #sky-canvas{
     position:absolute;
@@ -79,47 +77,31 @@
     width:100%; height:100%;
     display:block;
   }
-  /* мягкая растушёвка сверху: логотип и «Север» всегда читаются, даже
-     на густом участке звёзд — не только тень текста, но и лёгкий блюр фона */
+  /* мягкая растушёвка сверху: заголовок и координаты всегда читаются, даже
+     на густом участке звёзд — держит зону под текст, а не под целый экран */
   .sky-fade-top{
     position:absolute;
     inset: 0 0 auto 0;
-    height: 96px;
-    background: linear-gradient(to bottom, rgba(5,5,12,.46), rgba(5,5,12,0));
+    height: 150px;
+    background: linear-gradient(to bottom, rgba(5,5,12,.5), rgba(5,5,12,0));
     backdrop-filter: blur(2px);
     -webkit-backdrop-filter: blur(2px);
     pointer-events:none;
     z-index:3;
   }
-  /* Все элементы над небом, кроме сторон света по бокам и нижней панели
-     часа, живут в одном flex-столбце: сверху логотип+«Север», снизу
-     «Юг»+координаты, между ними резиновый зазор. Так порядок не зависит
-     от высоты экрана — на низком окне элементы просто сближаются,
-     а не наезжают друг на друга, как было при фиксированных отступах. */
-  .sky-overlay{
+  /* Заголовок и координаты — просто текст на заблюренной зоне сверху,
+     без собственной плашки: так они читаются легче и не выглядят
+     отдельным окошком поверх неба. */
+  .sky-header{
     position:absolute;
-    inset: 0 0 150px 0;
+    top:0; left:0; right:0;
     z-index:5;
     display:flex;
     flex-direction:column;
-    justify-content:space-between;
     align-items:center;
+    gap:8px;
+    padding: calc(16px + env(safe-area-inset-top,0px)) 20px 0;
     pointer-events:none;
-  }
-  .sky-overlay-top{
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    gap:10px;
-    padding-top: calc(16px + env(safe-area-inset-top,0px));
-  }
-  .sky-overlay-bottom{
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    gap:10px;
-    width:100%;
-    padding-bottom: 14px;
   }
   .site-logo{
     text-align:center;
@@ -131,8 +113,18 @@
     color: var(--ink);
     text-shadow: 0 1px 8px rgba(5,5,12,1), 0 0 18px rgba(5,5,12,.8);
   }
-  /* плашки: сторона света и координаты — на непредсказуемом звёздном фоне
-     нужен собственный фон, а не только тень текста */
+  .sky-caption{
+    width: min(94%, 640px);
+    text-align:center;
+    font-family: var(--font-sans);
+    font-size: 12px;
+    letter-spacing:.02em;
+    line-height:1.5;
+    color: var(--ink-dim);
+    text-shadow: 0 1px 6px rgba(5,5,12,.95), 0 1px 3px rgba(5,5,12,.9);
+  }
+  /* плашки сторон света — собственный фон нужен, они стоят прямо на звёздах,
+     не на заблюренной зоне */
   .plaque{
     font-family: var(--font-sans);
     font-size: 11px;
@@ -148,31 +140,26 @@
     border-radius: 999px;
     white-space:nowrap;
   }
-  /* восток/запад по бокам — центрированы по высоте «рабочей» зоны неба
-     (без нижней панели часа), а не всей секции целиком */
-  .compass-e, .compass-w{
+  /* Стороны света расположены крестом вокруг центра видимой части неба
+     (без учёта нижней панели часа) — три равные строки/колонки, каждая
+     плашка держится в центре своей полосы, форма креста не зависит
+     от высоты экрана. */
+  .compass-cross{
     position:absolute;
+    inset: 130px 0 150px 0;
     z-index:5;
-    top: calc(50% - 75px);
+    display:grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr;
+    align-items:center;
+    justify-items:center;
+    padding: 16px;
     pointer-events:none;
   }
-  .compass-e{ left: 12px; }
-  .compass-w{ right: 12px; }
-  .sky-caption{
-    width: min(94%, 640px);
-    text-align:center;
-    font-family: var(--font-sans);
-    font-size: 12px;
-    letter-spacing:.02em;
-    line-height:1.5;
-    color: var(--ink-dim);
-    background: rgba(5,5,12,.5);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-    border: 1px solid rgba(233,228,216,.1);
-    border-radius: 16px;
-    padding: 10px 16px;
-  }
+  .compass-cross .compass-n{ grid-column:2; grid-row:1; }
+  .compass-cross .compass-s{ grid-column:2; grid-row:3; }
+  .compass-cross .compass-e{ grid-column:1; grid-row:2; justify-self:start; margin-left:4px; }
+  .compass-cross .compass-w{ grid-column:3; grid-row:2; justify-self:end; margin-right:4px; }
   .hour-control{
     position:absolute;
     left:0; right:0; bottom:0;
@@ -625,18 +612,16 @@
 
     <div class="sky-fade-top"></div>
 
-    <div class="plaque compass-e">Восток</div>
-    <div class="plaque compass-w">Запад</div>
+    <div class="sky-header">
+      <div class="site-logo">Твой небосвод</div>
+      <div class="sky-caption" id="sky-caption">18 сентября 1971 года, село Кленовское, 56°49′ с.ш. 58°37′ в.д. Луны в ту ночь не было.</div>
+    </div>
 
-    <div class="sky-overlay">
-      <div class="sky-overlay-top">
-        <div class="site-logo">Твой небосвод</div>
-        <div class="sky-caption" id="sky-caption">18 сентября 1971 года, село Кленовское, 56°49′ с.ш. 58°37′ в.д. Луны в ту ночь не было.</div>
-        <div class="plaque compass-n">Север</div>
-      </div>
-      <div class="sky-overlay-bottom">
-        <div class="plaque compass-s">Юг</div>
-      </div>
+    <div class="compass-cross">
+      <div class="plaque compass-n">Север</div>
+      <div class="plaque compass-e">Восток</div>
+      <div class="plaque compass-w">Запад</div>
+      <div class="plaque compass-s">Юг</div>
     </div>
 
     <div class="hour-control">
