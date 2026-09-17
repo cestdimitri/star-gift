@@ -89,10 +89,37 @@
     pointer-events:none;
     z-index:3;
   }
-  .site-logo{
+  /* Все элементы над небом, кроме сторон света по бокам и нижней панели
+     часа, живут в одном flex-столбце: сверху логотип+«Север», снизу
+     «Юг»+координаты, между ними резиновый зазор. Так порядок не зависит
+     от высоты экрана — на низком окне элементы просто сближаются,
+     а не наезжают друг на друга, как было при фиксированных отступах. */
+  .sky-overlay{
     position:absolute;
-    left:0; right:0;
-    top: calc(16px + env(safe-area-inset-top,0px));
+    inset: 0 0 150px 0;
+    z-index:5;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    align-items:center;
+    pointer-events:none;
+  }
+  .sky-overlay-top{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:10px;
+    padding-top: calc(16px + env(safe-area-inset-top,0px));
+  }
+  .sky-overlay-bottom{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:10px;
+    width:100%;
+    padding-bottom: 14px;
+  }
+  .site-logo{
     text-align:center;
     font-family: var(--font-sans);
     font-weight:700;
@@ -100,15 +127,11 @@
     letter-spacing:.14em;
     text-transform: uppercase;
     color: var(--ink);
-    z-index:5;
-    pointer-events:none;
     text-shadow: 0 1px 8px rgba(5,5,12,1), 0 0 18px rgba(5,5,12,.8);
   }
   /* плашки: сторона света и координаты — на непредсказуемом звёздном фоне
      нужен собственный фон, а не только тень текста */
   .plaque{
-    position:absolute;
-    z-index:5;
     font-family: var(--font-sans);
     font-size: 11px;
     font-weight:600;
@@ -121,19 +144,20 @@
     border: 1px solid rgba(233,228,216,.12);
     padding: 6px 12px;
     border-radius: 999px;
-    pointer-events:none;
     white-space:nowrap;
   }
-  .compass-n{ top: 58px; left:50%; transform:translateX(-50%); }
-  .compass-s{ bottom: 222px; left:50%; transform:translateX(-50%); }
-  .compass-e{ left: 12px; top:50%; transform:translateY(-50%); }
-  .compass-w{ right: 12px; top:50%; transform:translateY(-50%); }
-  .sky-caption{
+  /* восток/запад по бокам — центрированы по высоте «рабочей» зоны неба
+     (без нижней панели часа), а не всей секции целиком */
+  .compass-e, .compass-w{
     position:absolute;
-    left:16px; right:16px;
-    bottom: 148px;
-    margin:0 auto;
-    max-width: min(90%, 480px);
+    z-index:5;
+    top: calc(50% - 75px);
+    pointer-events:none;
+  }
+  .compass-e{ left: 12px; }
+  .compass-w{ right: 12px; }
+  .sky-caption{
+    width: min(90%, 480px);
     text-align:center;
     font-family: var(--font-sans);
     font-size: 12px;
@@ -146,8 +170,6 @@
     border: 1px solid rgba(233,228,216,.1);
     border-radius: 16px;
     padding: 10px 16px;
-    z-index:3;
-    pointer-events:none;
   }
   .hour-control{
     position:absolute;
@@ -211,6 +233,7 @@
     display:none;
   }
   .speed-label{
+    font-family: var(--font-sans);
     font-size:12px;
     color: var(--ink-faint);
     min-width:28px;
@@ -219,6 +242,7 @@
     letter-spacing:.03em;
   }
   .hour-label{
+    font-family: var(--font-sans);
     font-size:13px;
     letter-spacing:.08em;
     color: var(--ink-dim);
@@ -266,7 +290,10 @@
        блюр внутри карточки, и в зазорах вокруг неё. */
     min-height: auto;
     padding: 24px 22px 20px;
-    margin: 0 14px 14px;
+    /* карточка не растягивается на всю ширину экрана: гуттер по бокам
+       на телефоне, а на широком экране — жёсткий потолок ширины */
+    width: min(100% - 28px, 720px);
+    margin: 0 auto 14px;
     gap: 0;
     /* у верхней кромки чуть прозрачнее — верхушки астр из сада видны над
        карточкой, к тексту фон уплотняется для контраста */
@@ -492,7 +519,8 @@
   #end-section{
     min-height: auto;
     padding: 20px 22px calc(22px + env(safe-area-inset-bottom,0px));
-    margin: 0 14px 14px;
+    width: min(100% - 28px, 720px);
+    margin: 0 auto 14px;
     background: linear-gradient(to bottom, rgba(9,9,18,.28) 0, rgba(9,9,18,.58) 64px);
     border-radius: 20px;
     border: 1px solid rgba(233,228,216,.09);
@@ -576,6 +604,13 @@
   @media (prefers-reduced-motion: reduce){
     *{ animation-duration:.001ms !important; }
   }
+
+  /* На совсем невысоких экранах строке с координатами и году рождения
+     уже не хватает места над панелью часа — прячем её, самое важное
+     (дата, компас, управление) остаётся. */
+  @media (max-height: 560px){
+    .sky-caption{ display:none; }
+  }
 </style>
 </head>
 <body>
@@ -593,14 +628,19 @@
 
     <div class="sky-fade-top"></div>
 
-    <div class="site-logo">Твой небосвод</div>
-
-    <div class="plaque compass-n">Север</div>
-    <div class="plaque compass-s">Юг</div>
     <div class="plaque compass-e">Восток</div>
     <div class="plaque compass-w">Запад</div>
 
-    <div class="sky-caption" id="sky-caption">18 сентября 1971 года, село Кленовское, 56°49′ с.ш. 58°37′ в.д. Луны в ту ночь не было.</div>
+    <div class="sky-overlay">
+      <div class="sky-overlay-top">
+        <div class="site-logo">Твой небосвод</div>
+        <div class="plaque compass-n">Север</div>
+      </div>
+      <div class="sky-overlay-bottom">
+        <div class="plaque compass-s">Юг</div>
+        <div class="sky-caption" id="sky-caption">18 сентября 1971 года, село Кленовское, 56°49′ с.ш. 58°37′ в.д. Луны в ту ночь не было.</div>
+      </div>
+    </div>
 
     <div class="hour-control">
       <div class="sky-playback">
@@ -1037,16 +1077,17 @@ safeInit('sky', function(){
       if (s[4]){ namedToDraw.push(x, y, s[4]); }
     }
 
-    // подписи ярких звёзд
+    // подписи ярких звёзд — кроме зоны нижней панели часа, чтобы не наезжали на неё
     ctx.font = '12px Georgia, serif';
     ctx.fillStyle = 'rgba(214,206,186,' + (0.72 * seam) + ')';
     ctx.textAlign = 'left';
     for (let i = 0; i < namedToDraw.length; i += 3){
+      if (namedToDraw[i + 1] > H - 150) continue;
       ctx.fillText(namedToDraw[i + 2], namedToDraw[i] + 7, namedToDraw[i + 1] + 3);
     }
 
-    // названия созвездий — приглушённее и курсивом, чтобы не спорить со звёздами
-    ctx.font = 'italic 12px Georgia, serif';
+    // названия созвездий — тем же шрифтом, что и звёзды, но мельче и тусклее
+    ctx.font = '11px Georgia, serif';
     ctx.fillStyle = 'rgba(168,178,206,' + (0.5 * seam) + ')';
     ctx.textAlign = 'center';
     for (let i = 0; i < CONST_LABELS.length; i++){
@@ -1054,7 +1095,7 @@ safeInit('sky', function(){
       const [alt, az] = altAz(raDeg, decDeg, lst);
       if (alt < 3) continue;
       const [x, y] = project(alt, az);
-      if (x < -40 || x > W + 40 || y < -20 || y > H + 20) continue;
+      if (x < -40 || x > W + 40 || y < -20 || y > H - 150) continue;
       ctx.fillText(cname, x, y);
     }
 
