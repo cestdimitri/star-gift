@@ -16,6 +16,15 @@
     --ochre:#c98f4a;
     --blue:#4b6fa5;
     --green:#4c5a44;
+    /* ---------- типографика: два шрифта, каждому — своя роль ----------
+       Georgia (с засечками, --font-serif) — то, что читают: прогноз,
+       гороскоп, поздравление, астрологическая строка. Задан на html/body,
+       остальные элементы наследуют его по умолчанию, отдельно не указываем.
+       Системный sans (--font-sans) — всё остальное: интерфейс, кнопки,
+       плашки, ярлыки-эйбрау (ДЕЛАТЬ/ИЗБЕГАТЬ и т.п.), числа и подписи
+       на карте неба. Прописные + letter-spacing — только у ярлыков. */
+    --font-serif: Georgia, 'Times New Roman', Times, serif;
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     color-scheme: dark;
   }
   *{ box-sizing:border-box; }
@@ -25,7 +34,7 @@
   html,body{
     margin:0; padding:0;
     color: var(--ink);
-    font-family: Georgia, 'Times New Roman', Times, serif;
+    font-family: var(--font-serif);
     font-size:17px;
     line-height:1.6;
     -webkit-text-size-adjust:100%;
@@ -68,31 +77,77 @@
     width:100%; height:100%;
     display:block;
   }
+  /* мягкая растушёвка сверху: логотип и «Север» всегда читаются, даже
+     на густом участке звёзд — не только тень текста, но и лёгкий блюр фона */
+  .sky-fade-top{
+    position:absolute;
+    inset: 0 0 auto 0;
+    height: 132px;
+    background: linear-gradient(to bottom, rgba(5,5,12,.6), rgba(5,5,12,0));
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    pointer-events:none;
+    z-index:3;
+  }
   .site-logo{
     position:absolute;
     left:0; right:0;
-    top: calc(14px + env(safe-area-inset-top,0px));
+    top: calc(16px + env(safe-area-inset-top,0px));
     text-align:center;
-    font-size: 14px;
-    letter-spacing:.16em;
+    font-family: var(--font-sans);
+    font-weight:700;
+    font-size: 15px;
+    letter-spacing:.14em;
     text-transform: uppercase;
-    color: var(--ink-dim);
+    color: var(--ink);
     z-index:5;
     pointer-events:none;
-    text-shadow: 0 1px 6px rgba(5,5,12,.9), 0 0 14px rgba(5,5,12,.6);
+    text-shadow: 0 1px 8px rgba(5,5,12,1), 0 0 18px rgba(5,5,12,.8);
   }
+  /* плашки: сторона света и координаты — на непредсказуемом звёздном фоне
+     нужен собственный фон, а не только тень текста */
+  .plaque{
+    position:absolute;
+    z-index:5;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    font-weight:600;
+    letter-spacing:.08em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    background: rgba(5,5,12,.55);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border: 1px solid rgba(233,228,216,.12);
+    padding: 6px 12px;
+    border-radius: 999px;
+    pointer-events:none;
+    white-space:nowrap;
+  }
+  .compass-n{ top: 58px; left:50%; transform:translateX(-50%); }
+  .compass-s{ bottom: 222px; left:50%; transform:translateX(-50%); }
+  .compass-e{ left: 12px; top:50%; transform:translateY(-50%); }
+  .compass-w{ right: 12px; top:50%; transform:translateY(-50%); }
   .sky-caption{
     position:absolute;
-    left:0; right:0;
-    bottom: 150px;
+    left:16px; right:16px;
+    bottom: 148px;
+    margin:0 auto;
+    max-width: min(90%, 480px);
     text-align:center;
-    font-size: 13px;
+    font-family: var(--font-sans);
+    font-size: 12px;
     letter-spacing:.02em;
-    color: var(--ink-faint);
-    padding: 0 24px;
+    line-height:1.5;
+    color: var(--ink-dim);
+    background: rgba(5,5,12,.5);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border: 1px solid rgba(233,228,216,.1);
+    border-radius: 16px;
+    padding: 10px 16px;
     z-index:3;
     pointer-events:none;
-    text-shadow: 0 1px 6px rgba(5,5,12,.9), 0 0 14px rgba(5,5,12,.6);
   }
   .hour-control{
     position:absolute;
@@ -117,7 +172,7 @@
     background:transparent;
     border:1px solid rgba(233,228,216,.25);
     color: var(--ink-dim);
-    font-family: Georgia, serif;
+    font-family: var(--font-sans);
     font-size:13px;
     width:44px; height:44px;
     min-width:44px; min-height:44px;
@@ -137,8 +192,9 @@
     background:transparent;
     border:1px solid rgba(233,228,216,.25);
     color: var(--ink-dim);
-    font-family: Georgia, serif;
+    font-family: var(--font-sans);
     font-size:12px;
+    font-weight:600;
     letter-spacing:.04em;
     padding: 0 14px;
     height:34px;
@@ -212,7 +268,9 @@
     padding: 24px 22px 20px;
     margin: 0 14px 14px;
     gap: 0;
-    background: rgba(9,9,18,.5);
+    /* у верхней кромки чуть прозрачнее — верхушки астр из сада видны над
+       карточкой, к тексту фон уплотняется для контраста */
+    background: linear-gradient(to bottom, rgba(9,9,18,.28) 0, rgba(9,9,18,.58) 64px);
     border-radius: 20px;
     border: 1px solid rgba(233,228,216,.09);
     backdrop-filter: blur(16px) saturate(1.15);
@@ -237,11 +295,22 @@
     #forecast-body .forecast-small{ grid-column: 1 / -1; }
   }
   .forecast-date{
-    font-size: 13px;
-    letter-spacing:.06em;
-    color: var(--ink-faint);
     text-align:center;
-    margin-bottom: 14px;
+    margin-bottom: 20px;
+  }
+  .forecast-eyebrow{
+    font-family: var(--font-sans);
+    font-weight:600;
+    font-size: 11px;
+    letter-spacing:.1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 6px;
+  }
+  .forecast-date-value{
+    font-size: 15px;
+    letter-spacing:.03em;
+    color: var(--ink-dim);
   }
   .forecast-birthday{
     font-size: 1.05em;
@@ -255,7 +324,9 @@
   }
   .forecast-theme:first-of-type{ border-top: none; }
   .forecast-theme-name{
-    font-size: 12.5px;
+    font-family: var(--font-sans);
+    font-weight:600;
+    font-size: 11.5px;
     letter-spacing:.1em;
     text-transform: uppercase;
     color: var(--gold);
@@ -279,11 +350,12 @@
     .forecast-dowords{ flex-direction:column; gap:24px; }
   }
   .forecast-dowords h3{
-    font-size: 11.5px;
+    font-family: var(--font-sans);
+    font-size: 11px;
     letter-spacing:.1em;
     text-transform: uppercase;
     color: var(--ink-faint);
-    font-weight: normal;
+    font-weight: 600;
     margin: 0 0 8px;
   }
   .forecast-dowords ul{
@@ -305,11 +377,12 @@
     border-top: 1px solid rgba(233,228,216,.1);
   }
   .forecast-quote h3{
-    font-size: 11.5px;
+    font-family: var(--font-sans);
+    font-size: 11px;
     letter-spacing:.1em;
     text-transform: uppercase;
     color: var(--ink-faint);
-    font-weight: normal;
+    font-weight: 600;
     margin: 0 0 10px;
   }
   .forecast-quote p{
@@ -320,6 +393,7 @@
   }
   .forecast-quote .forecast-source{
     margin-top: 10px;
+    font-family: var(--font-sans);
     font-size: 12px;
     color: var(--ink-faint);
   }
@@ -344,12 +418,13 @@
     background:transparent;
     border:1px solid rgba(233,228,216,.28);
     color: var(--ink-dim);
-    font-family: Georgia, serif;
+    font-family: var(--font-sans);
+    font-weight:600;
     font-size:13px;
-    letter-spacing:.06em;
+    letter-spacing:.04em;
     padding: 12px 20px;
     min-height:44px;
-    border-radius:2px;
+    border-radius:999px;
     cursor:pointer;
     transition: border-color .3s ease, color .3s ease;
   }
@@ -385,9 +460,10 @@
     -webkit-backdrop-filter: blur(6px);
     border:1px solid rgba(233,228,216,.2);
     color: var(--ink-faint);
-    font-family: Georgia, serif;
+    font-family: var(--font-sans);
+    font-weight:600;
     font-size:11px;
-    letter-spacing:.08em;
+    letter-spacing:.06em;
     padding: 10px 14px;
     min-height:44px;
     border-radius:999px;
@@ -417,12 +493,29 @@
     min-height: auto;
     padding: 20px 22px calc(22px + env(safe-area-inset-bottom,0px));
     margin: 0 14px 14px;
-    background: rgba(9,9,18,.5);
+    background: linear-gradient(to bottom, rgba(9,9,18,.28) 0, rgba(9,9,18,.58) 64px);
     border-radius: 20px;
     border: 1px solid rgba(233,228,216,.09);
     backdrop-filter: blur(16px) saturate(1.15);
     -webkit-backdrop-filter: blur(16px) saturate(1.15);
     box-shadow: 0 10px 40px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.04);
+  }
+  .music-eyebrow{
+    font-family: var(--font-sans);
+    font-weight:600;
+    font-size: 11px;
+    letter-spacing:.1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    text-align:center;
+    margin: 0 0 4px;
+  }
+  .music-hint{
+    font-family: var(--font-sans);
+    font-size: 12.5px;
+    color: var(--ink-faint);
+    text-align:center;
+    margin: 0 0 16px;
   }
   .music-viz{
     width: min(90vw, 520px);
@@ -498,7 +591,14 @@
   <section id="sky-section" class="section sky-section" aria-label="Небо в ночь рождения">
     <canvas id="sky-canvas"></canvas>
 
+    <div class="sky-fade-top"></div>
+
     <div class="site-logo">Твой небосвод</div>
+
+    <div class="plaque compass-n">Север</div>
+    <div class="plaque compass-s">Юг</div>
+    <div class="plaque compass-e">Восток</div>
+    <div class="plaque compass-w">Запад</div>
 
     <div class="sky-caption" id="sky-caption">18 сентября 1971 года, село Кленовское, 56°49′ с.ш. 58°37′ в.д. Луны в ту ночь не было.</div>
 
@@ -531,6 +631,8 @@
   <!-- GARDEN NOTE: сад рисуется отдельным fixed canvas ниже, вне потока -->
 
   <section id="end-section" class="section" aria-label="Финал">
+    <div class="music-eyebrow" id="music-eyebrow">Своя мелодия</div>
+    <p class="music-hint" id="music-hint">Нажимай на точки — каждая звучит своей нотой</p>
     <canvas id="music-viz" class="music-viz" aria-hidden="true"></canvas>
     <div class="music-dots" id="music-dots"></div>
   </section>
@@ -956,21 +1058,8 @@ safeInit('sky', function(){
       ctx.fillText(cname, x, y);
     }
 
-    // стороны света — прижаты к краям страницы, названия полностью
-    ctx.font = '600 13px Georgia, serif';
-    ctx.fillStyle = 'rgba(214,206,186,' + (0.8 * seam) + ')';
-    ctx.shadowColor = 'rgba(5,5,12,.9)';
-    ctx.shadowBlur = 8;
-    const edgePadX = 18, edgePadY = 22;
-    ctx.textAlign = 'center';
-    // «Север» опущен ниже заголовка-логотипа страницы, чтобы не наслаиваться на него
-    ctx.fillText('СЕВЕР', cx, Math.max(edgePadY + 10, 52));
-    ctx.fillText('ЮГ', cx, H - edgePadY);
-    ctx.textAlign = 'left';
-    ctx.fillText('ВОСТОК', edgePadX, cy);
-    ctx.textAlign = 'right';
-    ctx.fillText('ЗАПАД', W - edgePadX, cy);
-    ctx.shadowBlur = 0;
+    // стороны света теперь отдельные HTML-плашки поверх неба (см. .compass-*),
+    // на канвасе больше не рисуются — так их фон не зависит от звёзд под ними
   }
 
   registerTicker((ts, dt) => {
@@ -1193,7 +1282,8 @@ safeInit('forecast', function(){
 
   const MONTHS_RU = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
   function formatDate(d){ return `${d.getDate()} ${MONTHS_RU[d.getMonth()]} ${d.getFullYear()}`; }
-  dateEl.textContent = formatDate(now);
+  dateEl.innerHTML = `<div class="forecast-eyebrow">Что вселенная говорит тебе сегодня</div>
+    <div class="forecast-date-value">${formatDate(now)}</div>`;
 
   let themeBlocksData = null;
 
@@ -1572,20 +1662,22 @@ safeInit('garden', function(){
     const birthSeed = seedFromString(DATA.birth.replace(/-/g, '')); // 18091971
     const rand = mulberry32(Date.now() ^ Math.floor(Math.random() * 1e9));
 
+    // растения ниже, чем раньше: не должны дорастать до середины
+    // стеклянных карточек, только до их нижнего края
     const commonOpts = {
-      depth: 6, segDur: 1, minLen: 5, maxSegments: 140,
+      depth: 5, segDur: 1, minLen: 5, maxSegments: 140,
       angleMin: 20, angleMax: 30, branchProb: 0.66,
-      flowerSize: Math.max(10, Math.min(20, W * 0.03))
+      flowerSize: Math.max(9, Math.min(17, W * 0.026))
     };
 
     plants = [];
 
     // её собственные, постоянные растения — seed от даты рождения
     plants.push(buildPlant(birthSeed, Object.assign({}, commonOpts, {
-      x: W * 0.06, y: H, angle: 0.12, startLen: H * 0.09
+      x: W * 0.06, y: H, angle: 0.12, startLen: H * 0.06
     })));
     plants.push(buildPlant(birthSeed + 97, Object.assign({}, commonOpts, {
-      x: W * 0.94, y: H, angle: -0.12, startLen: H * 0.09
+      x: W * 0.94, y: H, angle: -0.12, startLen: H * 0.06
     })));
 
     // случайные, каждый раз новые
@@ -1596,9 +1688,9 @@ safeInit('garden', function(){
       const fx = randomSpots[i % randomSpots.length] + (rand() - 0.5) * 0.05;
       const x = Math.max(4, Math.min(W - 4, fx * W));
       plants.push(buildPlant(Math.floor(rand() * 4294967295), Object.assign({}, commonOpts, {
-        depth: 4 + Math.floor(rand() * 2),
+        depth: 3 + Math.floor(rand() * 2),
         x, y: H, angle: (rand() - 0.5) * 0.3,
-        startLen: H * (0.05 + rand() * 0.04)
+        startLen: H * (0.032 + rand() * 0.025)
       })));
     }
 
@@ -1706,7 +1798,13 @@ safeInit('music', function(){
   const endSection = document.getElementById('end-section');
 
   if (typeof Tone === 'undefined' || !toggle || !vizCanvas || !dotsWrap){
-    return; // тихая деградация — сайт работает как обычно, без звука
+    // тихая деградация — сайт работает как обычно, без звука;
+    // подписи про точки-ноты тоже прячем, раз играть не получится
+    const eyebrow = document.getElementById('music-eyebrow');
+    const hint = document.getElementById('music-hint');
+    if (eyebrow) eyebrow.hidden = true;
+    if (hint) hint.hidden = true;
+    return;
   }
 
   toggle.hidden = false;
