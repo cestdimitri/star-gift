@@ -14,24 +14,28 @@ permissions:
 jobs:
   update:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
+      # v7.0.1: immutable commit, not a movable version tag.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
-      - uses: actions/setup-node@v7
+      # v7.0.0: immutable commit, not a movable version tag.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
-          node-version: 'lts/*'
+          node-version: '24'
+          package-manager-cache: false
 
       - name: Забрать прогноз
         run: node tools/build-forecast.mjs
 
       - name: Закоммитить, если что-то изменилось
         run: |
-          if git diff --quiet -- forecast.json; then
+          if git diff --quiet -- forecast.json index.html; then
             echo "изменений нет"
             exit 0
           fi
           git config user.name  "forecast-bot"
           git config user.email "forecast-bot@users.noreply.github.com"
-          git add forecast.json
+          git add forecast.json index.html
           git commit -m "прогноз на $(date -u +%Y-%m-%d)"
           git push

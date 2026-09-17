@@ -11,6 +11,7 @@ const SIGN = process.env.FORECAST_SIGN || 'virgo';   // Солнце Тани �
 const OUT = process.env.FORECAST_OUT || 'forecast.json';
 const KEEP_DAYS = 150;                                // скользящее окно, чтобы файл не рос вечно
 const EMBED_DAYS = 10;                                // столько последних дней вшиваем в index.html
+const SIGNS = new Set(['aries', 'taurus', 'gemini', 'cancer', 'leo', 'virgo', 'libra', 'scorpio', 'sagittarius', 'capricorn', 'aquarius', 'pisces']);
 
 function parseIgnio(xml, sign) {
   const dates = {};
@@ -33,6 +34,7 @@ function parseIgnio(xml, sign) {
 }
 
 async function main() {
+  if (!SIGNS.has(SIGN)) throw new Error(`неподдерживаемый знак: ${SIGN}`);
   // --from-file <путь> — прогнать сохранённый XML без обращения к сети
   const fromFile = process.argv.includes('--from-file')
     ? process.argv[process.argv.indexOf('--from-file') + 1]
@@ -42,7 +44,10 @@ async function main() {
   if (fromFile) {
     xml = await readFile(fromFile, 'utf8');
   } else {
-    const res = await fetch(SOURCE, { headers: { 'User-Agent': 'birthday-page/1.0 (personal, once daily)' } });
+    const res = await fetch(SOURCE, {
+      headers: { 'User-Agent': 'birthday-page/1.0 (personal, once daily)' },
+      signal: AbortSignal.timeout(15_000),
+    });
     if (!res.ok) throw new Error(`ignio ответил ${res.status}`);
     xml = await res.text();
   }
@@ -51,7 +56,16 @@ async function main() {
 
   let store = { sign: SIGN, source: 'ignio.com', updated: null, days: {} };
   if (existsSync(OUT)) {
-    try { store = { ...store, ...JSON.parse(await readFile(OUT, 'utf8')) }; } catch {}
+    try {
+      const saved = JSON.parse(await readFile(OUT, 'utf8'));
+      if (saved && typeof saved === 'object' && saved.days && typeof saved.days === 'object' && !Array.isArray(saved.days)) {
+        store = { ...store, ...saved, sign: SIGN, source: 'ignio.com' };
+      } else {
+        console.warn(`игнорирую некорректный ${OUT}`);
+      }
+    } catch {
+      console.warn(`не удалось прочитать ${OUT}; начинаю новый архив`);
+    }
   }
 
   let added = 0;

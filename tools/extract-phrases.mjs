@@ -22,7 +22,7 @@ const SLUG = {
 const html = await readFile('index.html', 'utf8');
 const m = html.match(/const FORECAST = (\{[\s\S]*?\});\n\nsafeInit\('forecast'/);
 if (!m) throw new Error('не нашёл FORECAST в index.html');
-const F = eval('(' + m[1] + ')');
+const F = JSON.parse(m[1]);
 
 await mkdir('phrases', { recursive: true });
 

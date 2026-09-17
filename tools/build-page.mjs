@@ -107,22 +107,31 @@ if (problems.length) {
   process.exit(1);
 }
 
-if (process.argv.includes('--check')) {
-  console.log('\nпроверка пройдена, файл не трогал');
-  process.exit(0);
-}
-
 // ---------- вклейка в index.html ----------
 const html = await readFile('index.html', 'utf8');
 const re = /const FORECAST = \{[\s\S]*?\};\n\nsafeInit\('forecast'/;
 if (!re.test(html)) throw new Error('не нашёл блок FORECAST в index.html');
 
+// Ключи в кавычках не для красоты: так блок — не только валидный JS, но и
+// валидный JSON. Благодаря этому extract-phrases.mjs читает его через
+// JSON.parse, без eval, которому пришлось бы доверять содержимому страницы.
 const block = 'const FORECAST = {\n' +
-  `  phrases: ${JSON.stringify(phrases)},\n` +
-  `  doWords: ${JSON.stringify(doWords)},\n` +
-  `  avoidWords: ${JSON.stringify(avoidWords)},\n` +
-  `  birthdayMessage: ${JSON.stringify(birthdayMessage)}\n` +
+  `  "phrases": ${JSON.stringify(phrases)},\n` +
+  `  "doWords": ${JSON.stringify(doWords)},\n` +
+  `  "avoidWords": ${JSON.stringify(avoidWords)},\n` +
+  `  "birthdayMessage": ${JSON.stringify(birthdayMessage)}\n` +
   "};\n\nsafeInit('forecast'";
 
-await writeFile('index.html', html.replace(re, block), 'utf8');
+const next = html.replace(re, block);
+
+if (process.argv.includes('--check')) {
+  if (next !== html) {
+    console.error('\nindex.html не соответствует файлам phrases/. Запустите: node tools/build-page.mjs');
+    process.exit(1);
+  }
+  console.log('\nпроверка пройдена, файл не трогал');
+  process.exit(0);
+}
+
+await writeFile('index.html', next, 'utf8');
 console.log('\nindex.html собран');
