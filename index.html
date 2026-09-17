@@ -164,8 +164,11 @@
   .forecast-section{
     align-items:stretch;
     text-align:left;
-    /* снизу с запасом: там висит кнопка звука */
-    padding: 56px 26px 96px;
+    /* Секция по высоте содержимого, а не во весь экран: с коротким текстом
+       из источника под ним оставалась пустая полоса почти в треть экрана.
+       Кнопка звука больше не мешает — она появляется только у финала. */
+    min-height: auto;
+    padding: 76px 26px 52px;
     gap: 0;
   }
   /* Сад растёт на фоне всей страницы, и подросшие стебли лезли прямо под
@@ -352,11 +355,19 @@
   .sound-toggle[aria-pressed="true"] .sound-icon{ color: var(--gold); }
   .sound-toggle[hidden]{ display:none; }
 
+  /* Финал не занимает целый экран: под прогнозом оставалась пустая
+     полоса высотой во весь телефон. Хватает места для сада по краям. */
+  #end-section{
+    min-height: 44vh;
+    min-height: 44dvh;
+    padding-top: 8px;
+    padding-bottom: 28px;
+  }
   .music-viz{
     width: min(90vw, 520px);
-    height: 150px;
+    height: 108px;
     display:block;
-    margin: 8px auto 0;
+    margin: 0 auto;
   }
   .music-dots{
     display:flex;
@@ -364,7 +375,7 @@
     justify-content:center;
     gap: 31px;
     max-width: 420px;
-    margin: 6px auto 40px;
+    margin: 4px auto 0;
     padding: 0;
   }
   @media (max-width: 460px){
@@ -1013,8 +1024,11 @@ safeInit('forecast', function(){
   const ASPECT_RU = { CONJ:'соединение', SEXTILE:'секстиль', SQUARE:'квадратура', TRINE:'трин', OPPOSITION:'оппозиция', NONE:'без выраженного аспекта' };
   function smallPrintLine(){
     const phaseWord = phaseLabel(elong);
-    if (aspect === 'NONE') return `Луна в ${moonSign.prep}, ${phaseWord}, без выраженного аспекта к твоему Солнцу.`;
-    return `Луна в ${moonSign.prep}, ${phaseWord}, ${ASPECT_RU[aspect]} к твоему Солнцу.`;
+    // Источник обращается на «вы», собственный банк фраз — на «ты».
+    // Строка про Луну подстраивается, иначе на экране два разных обращения.
+    const yours = externalText ? 'вашему' : 'твоему';
+    if (aspect === 'NONE') return `Луна в ${moonSign.prep}, ${phaseWord}, без выраженного аспекта к ${yours} Солнцу.`;
+    return `Луна в ${moonSign.prep}, ${phaseWord}, ${ASPECT_RU[aspect]} к ${yours} Солнцу.`;
   }
 
   const isBirthday = (now.getMonth() === 8 && now.getDate() === 18); // сентябрь = 8 (0-индексация)
@@ -1671,7 +1685,28 @@ safeInit('music', function(){
     }).catch(() => {});
   }
 
-  toggle.addEventListener('click', () => { setEnabled(!enabled); });
+  let userTouchedSound = false;
+  toggle.addEventListener('click', () => { userTouchedSound = true; setEnabled(!enabled); });
+
+  // Автозапуск. Браузеры не дают включить звук до первого действия человека —
+  // это их правило безопасности, обойти его нельзя. Поэтому музыка стартует
+  // при самом первом касании или клике по странице, что бы это ни было:
+  // прокрутка пальцем, нажатие на ползунок часа, тап по пустому месту.
+  // Прокрутка колесом и клавиши тоже считаются жестом, скролл сам по себе — нет.
+  function autostart(){
+    if (userTouchedSound || enabled) return;
+    setEnabled(true);
+  }
+  const AUTOSTART_EVENTS = ['pointerdown', 'touchend', 'keydown', 'wheel'];
+  function armAutostart(){
+    AUTOSTART_EVENTS.forEach(ev =>
+      window.addEventListener(ev, onFirstGesture, { once: true, passive: true }));
+  }
+  function onFirstGesture(){
+    AUTOSTART_EVENTS.forEach(ev => window.removeEventListener(ev, onFirstGesture));
+    autostart();
+  }
+  armAutostart();
   // Кнопка висит в правом нижнем углу и на первом экране накрывала ползунок
   // часа, а на прогнозе — последнюю строку списка. Музыка живёт в финале,
   // поэтому там она и появляется; если звук включён, остаётся видимой всегда,
