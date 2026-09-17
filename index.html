@@ -1939,7 +1939,11 @@ safeInit('music', function(){
       modulationIndex: 3,
       envelope: { attack: 0.6, decay: 1.2, sustain: 0.25, release: 3.5 },
       modulationEnvelope: { attack: 0.4, decay: 0.8, sustain: 0.1, release: 2 },
-      volume: -18
+      // Было -18 дБ: на выходе пик около 0.02 (-28 дБ) — на ноутбучных
+      // динамиках почти не слышно. Замеряно анализатором: -4 дБ вместе с
+      // master 2.2 дают пик ~0.22, три одновременные ноты ~0.76 — громко
+      // и без перегруза (клиппинг начинается на 1.0).
+      volume: -4
     });
     synth.connect(delay);
   }
@@ -2013,7 +2017,7 @@ safeInit('music', function(){
       master.gain.cancelScheduledValues(now);
       master.gain.setValueAtTime(master.gain.value, now);
       if (enabled){
-        master.gain.linearRampToValueAtTime(1, now + 2.2);
+        master.gain.linearRampToValueAtTime(2.2, now + 2.2);
         scheduleNext(gen);
       } else {
         master.gain.linearRampToValueAtTime(0, now + 1.4);
@@ -2043,6 +2047,27 @@ safeInit('music', function(){
     autostart();
   }
   armAutostart();
+
+  // Разблокировка звука. Браузер включает аудио только после настоящего
+  // действия человека, и прокрутка колесом таковым НЕ считается — Chrome её
+  // не засчитывает. А снимали мы слушатели автозапуска после первого же
+  // события, включая wheel: музыка «включалась» (кнопка горела, ноты
+  // планировались), но контекст оставался спящим — блок виден, а тишина.
+  // Поэтому здесь отдельные слушатели, которые живут до тех пор, пока звук
+  // действительно не заработает, а не до первого события.
+  const UNLOCK_EVENTS = ['pointerdown', 'touchend', 'keydown'];
+  function disarmUnlock(){
+    UNLOCK_EVENTS.forEach(ev => window.removeEventListener(ev, unlockAudio));
+  }
+  function unlockAudio(){
+    if (!window.Tone || !Tone.context) return;
+    if (Tone.context.state === 'running'){ disarmUnlock(); return; }
+    Tone.context.resume()
+      .then(() => { if (Tone.context.state === 'running') disarmUnlock(); })
+      .catch(() => {});
+  }
+  UNLOCK_EVENTS.forEach(ev =>
+    window.addEventListener(ev, unlockAudio, { passive: true }));
   // Кнопка висит в правом нижнем углу и на первом экране накрывала ползунок
   // часа, а на прогнозе — последнюю строку списка. Музыка живёт в финале,
   // поэтому там она и появляется; если звук включён, остаётся видимой всегда,
