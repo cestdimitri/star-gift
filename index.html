@@ -250,19 +250,35 @@
   /* без этого отступа пункт из двух строк слипается со следующим */
   .forecast-dowords li{ margin-bottom: 10px; }
   .forecast-dowords li:last-child{ margin-bottom: 0; }
-  .forecast-daily{
-    margin: 0;
-    font-size: 1.06em;
-    line-height: 1.8;
+  /* Гороскоп со стороны. Оформлен нарочито иначе, чем свой прогноз:
+     он обращается на «вы» и звучит другим голосом, и пусть это читается
+     как цитата из газеты, а не как сбой. */
+  .forecast-quote{
+    margin-top: 30px;
+    padding-top: 22px;
+    border-top: 1px solid rgba(233,228,216,.1);
   }
-  .forecast-source{
-    margin-top: 22px;
-    font-size: 12.5px;
+  .forecast-quote h3{
+    font-size: 11.5px;
+    letter-spacing:.1em;
+    text-transform: uppercase;
     color: var(--ink-faint);
-    line-height:1.6;
+    font-weight: normal;
+    margin: 0 0 10px;
   }
-  .forecast-source a{ color: var(--ink-faint); text-decoration: underline; }
-  .forecast-source a:hover{ color: var(--ink-dim); }
+  .forecast-quote p{
+    margin: 0;
+    color: var(--ink-dim);
+    font-size: .97em;
+    line-height:1.75;
+  }
+  .forecast-quote .forecast-source{
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--ink-faint);
+  }
+  .forecast-quote .forecast-source a{ color: var(--ink-faint); text-decoration: underline; }
+  .forecast-quote .forecast-source a:hover{ color: var(--ink-dim); }
   .forecast-small{
     margin-top: 26px;
     font-size: 13px;
@@ -1026,7 +1042,7 @@ safeInit('forecast', function(){
     const phaseWord = phaseLabel(elong);
     // Источник обращается на «вы», собственный банк фраз — на «ты».
     // Строка про Луну подстраивается, иначе на экране два разных обращения.
-    const yours = externalText ? 'вашему' : 'твоему';
+    const yours = 'твоему';
     if (aspect === 'NONE') return `Луна в ${moonSign.prep}, ${phaseWord}, без выраженного аспекта к ${yours} Солнцу.`;
     return `Луна в ${moonSign.prep}, ${phaseWord}, ${ASPECT_RU[aspect]} к ${yours} Солнцу.`;
   }
@@ -1038,13 +1054,6 @@ safeInit('forecast', function(){
   dateEl.textContent = formatDate(now);
 
   let themeBlocksData = null;
-  let externalText = null;                       // текст из forecast.json, когда он есть
-  const footnoteEl = document.querySelector('.forecast-footnote');
-  const FOOTNOTE_OWN = footnoteEl ? footnoteEl.textContent : '';
-
-  function escapeHtml(t){
-    return String(t).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
-  }
 
   function renderOwn(){
     const usedFirstWords = new Set();
@@ -1059,28 +1068,17 @@ safeInit('forecast', function(){
     </div>
     <p class="forecast-small">${smallPrintLine()}</p>`;
     bodyEl.innerHTML = html;
-    if (footnoteEl) footnoteEl.textContent = FOOTNOTE_OWN;
-  }
-
-  // Текст приходит из внешнего источника: его кладёт рядом со страницей
-  // робот раз в сутки (tools/build-forecast.mjs). Прямо из браузера
-  // гороскопные сервисы не читаются — они не отдают CORS-заголовков.
-  function renderExternal(text){
-    externalText = text;
-    themeBlocksData = null;
-    bodyEl.innerHTML = `<p class="forecast-daily">${escapeHtml(text)}</p>
-    <p class="forecast-small">${smallPrintLine()}</p>
-    <p class="forecast-source">Прогноз — <a href="https://ignio.com/" target="_blank" rel="noopener">ignio.com</a></p>`;
-    if (footnoteEl) footnoteEl.textContent = '';
   }
 
   if (isBirthday){
     bodyEl.innerHTML = `<p class="forecast-birthday">${FORECAST.birthdayMessage}</p>`;
   } else {
-    // Сначала рисуем свой вариант — он не требует сети и появляется мгновенно.
-    // Если внешний текст на сегодня найдётся, он его заменит.
     renderOwn();
-    loadExternal();
+    loadQuote();          // гороскоп со стороны — добавится ниже, если он есть
+  }
+
+  function escapeHtml(t){
+    return String(t).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
   }
 
   function todayKey(){
@@ -1088,19 +1086,25 @@ safeInit('forecast', function(){
     return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
   }
 
-  function loadExternal(){
+  // Текст кладёт рядом со страницей робот раз в сутки (tools/build-forecast.mjs).
+  // Прямо из браузера гороскопные сервисы не читаются: они не отдают
+  // CORS-заголовков. Нет файла, нет сети, робот не отработал — блока просто нет.
+  function loadQuote(){
     if (typeof fetch !== 'function') return;
-    let done = false;
-    const stop = setTimeout(() => { done = true; }, 4000);   // ждём недолго, страница уже живая
     fetch('forecast.json', { cache: 'no-cache' })
       .then(r => (r.ok ? r.json() : null))
       .then(data => {
-        clearTimeout(stop);
-        if (done || !data || !data.days) return;
+        if (!data || !data.days) return;
         const text = data.days[todayKey()];
-        if (typeof text === 'string' && text.trim().length > 10) renderExternal(text.trim());
+        if (typeof text !== 'string' || text.trim().length < 10) return;
+        const box = document.createElement('div');
+        box.className = 'forecast-quote';
+        box.innerHTML = `<h3>Гороскоп на сегодня</h3>
+          <p>${escapeHtml(text.trim())}</p>
+          <p class="forecast-source"><a href="https://ignio.com/" target="_blank" rel="noopener">ignio.com</a></p>`;
+        bodyEl.appendChild(box);
       })
-      .catch(() => {});   // нет файла, нет сети, сервис умер — остаётся свой вариант
+      .catch(() => {});
   }
 
   // ---------- карточка на сохранение: тёмный и светлый (печатный) варианты ----------
@@ -1155,10 +1159,6 @@ safeInit('forecast', function(){
         ctx.font = serif(40 * k);
         b.push({ t:'para', lines: wrapLines(ctx, FORECAST.birthdayMessage, contentW),
                  font: serif(40 * k), color: ink, lh: 60 * k });
-      } else if (externalText){
-        ctx.font = serif(38 * k);
-        b.push({ t:'para', lines: wrapLines(ctx, externalText, contentW),
-                 font: serif(38 * k), color: ink, lh: 56 * k });
       } else {
         themeBlocksData.forEach(function(item, i){
           b.push({ t:'line', text: item.theme.toUpperCase(), font: serif(22 * k),
@@ -1251,10 +1251,6 @@ safeInit('forecast', function(){
       const foot = wrapLines(ctx, smallPrintLine(), contentW);
       let fy = H - 80;
       for (let i = 0; i < foot.length && i < 2; i++){ ctx.fillText(foot[i], marginX, fy); fy += 30; }
-      if (externalText){
-        ctx.font = serif(19);
-        ctx.fillText('ignio.com', W - marginX - ctx.measureText('ignio.com').width, H - 118);
-      }
     }
 
     return canvas;
