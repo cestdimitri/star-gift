@@ -310,6 +310,7 @@
       column-gap: 28px;
     }
     #forecast-body .forecast-theme:nth-of-type(-n+2){ border-top:none; }
+    #forecast-body .forecast-birthday,
     #forecast-body .forecast-dowords,
     #forecast-body .forecast-small,
     #forecast-body .forecast-quote{ grid-column: 1 / -1; }
@@ -332,11 +333,19 @@
     letter-spacing:.03em;
     color: var(--ink-dim);
   }
+  /* Поздравление в день рождения. Стоит первым блоком и не заменяет собой
+     остальной прогноз: ниже как обычно идут темы, списки и гороскоп.
+     Ширина ограничена и центрирована, иначе на широком экране строка
+     растягивается во всю карточку и перестаёт читаться как обращение. */
   .forecast-birthday{
     font-size: 1.05em;
     line-height:1.8;
     text-align:center;
     color: var(--ink);
+    max-width: 30em;
+    margin: 0 auto 4px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid rgba(233,228,216,.1);
   }
   .forecast-theme{
     padding: 12px 0;
@@ -1623,6 +1632,11 @@ safeInit('forecast', function(){
     const usedFirstWords = new Set();
     themeBlocksData = themesToday.map(theme => ({ theme, text: pickPhrase(theme, tone, usedFirstWords) }));
     let html = '';
+    // В день рождения поздравление идёт первым блоком — и не вместо прогноза,
+    // а перед ним: темы, списки и гороскоп остаются на месте, как в любой день
+    if (isBirthday){
+      html += `<p class="forecast-birthday">${FORECAST.birthdayMessage}</p>`;
+    }
     themeBlocksData.forEach(({ theme, text }) => {
       html += `<div class="forecast-theme"><h3 class="forecast-theme-name">${theme}</h3><p class="forecast-theme-text">${text}</p></div>`;
     });
@@ -1634,12 +1648,8 @@ safeInit('forecast', function(){
     bodyEl.innerHTML = html;
   }
 
-  if (isBirthday){
-    bodyEl.innerHTML = `<p class="forecast-birthday">${FORECAST.birthdayMessage}</p>`;
-  } else {
-    renderOwn();
-    loadQuote();          // гороскоп со стороны — добавится ниже, если он есть
-  }
+  renderOwn();
+  loadQuote();            // гороскоп со стороны — добавится ниже, если он есть
 
   function escapeHtml(t){
     return String(t).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
@@ -1763,14 +1773,17 @@ safeInit('forecast', function(){
 
     function buildBlocks(k){
       const b = [];
+      // В день рождения поздравление открывает карточку, но не заменяет её:
+      // ниже идёт обычный прогноз — так же, как на самой странице
       if (isBirthday){
-        ctx.font = serif(40 * k);
+        ctx.font = serif(34 * k);
         b.push({ t:'para', lines: wrapLines(ctx, FORECAST.birthdayMessage, contentW),
-                 font: serif(40 * k), color: ink, lh: 60 * k });
-      } else {
+                 font: serif(34 * k), color: ink, lh: 50 * k });
+      }
+      {
         themeBlocksData.forEach(function(item, i){
           b.push({ t:'line', text: item.theme.toUpperCase(), font: serif(22 * k),
-                   color: gold, lh: 40 * k, gap: i ? 36 * k : 0 });
+                   color: gold, lh: 40 * k, gap: (i || isBirthday) ? 36 * k : 0 });
           ctx.font = serif(33 * k);
           b.push({ t:'para', lines: wrapLines(ctx, item.text, contentW),
                    font: serif(33 * k), color: ink, lh: 46 * k });
@@ -1812,11 +1825,11 @@ safeInit('forecast', function(){
       if (used <= available) break;
     }
 
-    if (!isBirthday){
-      ctx.fillStyle = inkDim;
-      ctx.font = serif(22);
-      ctx.fillText('ПРОГНОЗ ДНЯ', marginX, 108);
-    }
+    // заголовок и строка о Луне теперь и в день рождения: карточка содержит
+    // полный прогноз, а не только поздравление
+    ctx.fillStyle = inkDim;
+    ctx.font = serif(22);
+    ctx.fillText('ПРОГНОЗ ДНЯ', marginX, 108);
 
     let y = topLimit + Math.max(0, (available - used) / 2);
     for (const blk of blocks){
@@ -1853,13 +1866,11 @@ safeInit('forecast', function(){
     ctx.fillStyle = gold;
     ctx.font = serif(27);
     ctx.fillText(formatDate(now).toUpperCase(), marginX, H - 118);
-    if (!isBirthday){
-      ctx.fillStyle = inkDim;
-      ctx.font = serif(22, true);
-      const foot = wrapLines(ctx, smallPrintLine(), contentW);
-      let fy = H - 80;
-      for (let i = 0; i < foot.length && i < 2; i++){ ctx.fillText(foot[i], marginX, fy); fy += 30; }
-    }
+    ctx.fillStyle = inkDim;
+    ctx.font = serif(22, true);
+    const foot = wrapLines(ctx, smallPrintLine(), contentW);
+    let fy = H - 80;
+    for (let i = 0; i < foot.length && i < 2; i++){ ctx.fillText(foot[i], marginX, fy); fy += 30; }
 
     return canvas;
   }
